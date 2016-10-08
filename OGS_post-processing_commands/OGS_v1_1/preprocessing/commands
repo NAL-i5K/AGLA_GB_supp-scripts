@@ -1,0 +1,62 @@
+#generate comprehensive conversion file between WA IDs and OGS-merge IDs
+cat OGS-merge_11-25-2014/*.txt > id_conversions.txt
+
+#OGS-merge missed one gene conversion
+cat extra_gene_conversion_entry.txt id_conversions.txt > id_conversions2.txt
+
+#protein sequences:
+
+perl ../../scripts/modify_anogla_sequences_due_to_sequence_modifications.pl
+
+#deal with fasta files: add cDNA sequences for pseudogenes (WA downloads), update protein sequences for genes with sequence mods
+#convert deflines
+#need to add -RA
+cut -f 2 OGS-merge_11-25-2014/pseudo_rRNA_list_26000.txt > pseudo_rRNA_ids.txt
+
+perl ../../scripts/update_pseudogene_deflines.pl anogla_pseudogene_cdnas_from_webapollo.fasta id_conversions.txt anogla_WA_11-20-2014-1148am_NALcleaned.gff anogla_pseudogene_cdnas_danIds.fasta
+
+perl ../../scripts/select_specific_sequences_from_fasta_anogla.pl anogla_pseudogene_cdnas_danIds.fasta  pseudo_rRNA_ids.txt anogla_pseudogene_cdnas_from_webapollo_subset.fasta
+
+#add new sequences to cDNA fasta file
+cat  anogla_pseudogene_cdnas_from_webapollo_subset.fasta agla_v1_1_NALmod.fna > /agla_v1_1_NALmod2.fna
+
+#update gff functional information
+
+#create transcript ID conversion table (OGS-merge process only provided gene IDs)
+perl ../../scripts/create_transcript_level_id_conversion_files.pl anogla_WA_11-20-2014-1148am_NALcleaned.gff OGS-merge_11-25-2014/agla_v1_1.gff3 anogla_transcripts_convert.txt > create_transcript_level_id_conversion_files.stderror
+
+#add information to conversion table that was missed in OGS-merge
+cat extra_transcript_conversion_entry.txt anogla_transcripts_convert.txt > anogla_transcripts_convert2.txt
+
+
+perl ../../scripts/add_functional_annotation_information_to_dans_output_v3.pl anogla_WA_11-20-2014-1148am_NALcleaned.gff OGS-merge_11-25-2014/agla_v1_1.gff3 id_conversions2.txt anogla_transcripts_convert2.txt agla_v1_1_NALmod3.gff3 > add-functional_information_to_gff3_stderror2.txt
+
+#do this after going through QC
+#two deletion sequence mods are invalid (insufficient evidence)
+grep -v Scaffold339-78534-deletion agla_v1_1_NALmod3.gff3 > temp.gff
+grep -v Scaffold339-66066-deletion temp.gff > temp2.gff
+#one stop codon readthough invalid (no justification supplied) 
+grep -v stop_codon_read_through temp2.gff > temp.gff
+#truncate associated exon to avoid stop codon
+sed 's/433699\t435059/433699\t435056/' temp.gff > temp2.gff
+#remove extra stop codon
+sed 's/CRFKKCIEQGMVLQGKVV*MPGG/CRFKKCIEQGMVLQGKVVMPGG/' temp2.gff > temp.gff
+#escape % signs
+sed 's/% /%25 /' temp.gff > temp2.gff
+#give final placeholder official name
+mv temp2.gff agla_v1_1_NALmod4.gff3
+#remove temp files
+rm temp*.gff
+
+#create annotation summary
+wget https://i5k.nal.usda.gov/data/Arthropoda/anogla-(Anoplophora_glabripennis)/Current%20Genome%20Assembly/1.Genome%20Assembly/BCM-After-Atlas/Scaffolds/Agla_Btl03082013.genome.fa.gz
+gunzip Agla_Btl03082013.genome.fa.gz
+perl ../../scripts/create_annotation_summaries_nov21-4.pl anogla_WA_11-20-2014-1148am_NALcleaned.gff Agla_Btl03082013.genome.fa id_conversions2.txt anogla_transcripts_convert2.txt anogla_WA_annotation_summary.txt anogla
+
+mkdir ../OGS_v1_1_NALmod/
+cp agla_v1_1_NALmod4.gff3 ../OGS_v1_1_NALmod/
+cp agla_v1_1_NALmod2.fna ../OGS_v1_1_NALmod/
+cp agla_v1_1_NALmod_CDS.fna ../OGS_v1_1_NALmod/
+cp agla_v1_1_NALmod.faa  ../OGS_v1_1_NALmod/
+cp -r OGS-merge_11-25-2014/ ../OGS_v1_1_NALmod/
+

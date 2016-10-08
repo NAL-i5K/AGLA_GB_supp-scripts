@@ -1,0 +1,7 @@
+This directory contains the commands and scripts used to post-process (QC) the merged OGS for the Anoplophora glabripennis genome project. Steps are listed for 1) OGSv1.1 and 2) OGSv1.2. To run the scripts, you must have perl and python2.7 installed in your path. All other commands can be performed in a -nix shell of your choice. 
+
+For scripts/commands used to generate OGSv1.1, see OGS_v1_1/preprocessing/commands.
+For scripts/commands used to generate OGSv1.2 from OGSv1.1, see OGS_v1_2/preprocessing/commands.
+
+
+
